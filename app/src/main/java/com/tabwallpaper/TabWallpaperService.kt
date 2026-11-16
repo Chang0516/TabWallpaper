@@ -29,7 +29,15 @@ private const val FADE_MS = 300L
 
 class TabWallpaperService : WallpaperService() {
 
-    override fun onCreateEngine(): Engine = TabEngine()
+    private val engines = mutableListOf<TabEngine>()
+
+    override fun onCreateEngine(): Engine = TabEngine().also { engines += it }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // 转屏后马上重画，并在稍后再画几次，确保用的是转屏后的新尺寸
+        engines.forEach { it.redrawAfterRotate() }
+    }
 
     inner class TabEngine : Engine(), SharedPreferences.OnSharedPreferenceChangeListener {
 
@@ -104,7 +112,12 @@ class TabWallpaperService : WallpaperService() {
             reload(fade = false)
         }
 
+        fun redrawAfterRotate() {
+            for (d in longArrayOf(0, 120, 350, 800)) handler.postDelayed({ drawFrame() }, d)
+        }
+
         override fun onDestroy() {
+            engines.remove(this)
             Prefs.sp(ctx).unregisterOnSharedPreferenceChangeListener(this)
             handler.removeCallbacksAndMessages(null)
             executor.shutdownNow()
@@ -253,6 +266,11 @@ class TabWallpaperService : WallpaperService() {
 
         private fun drawFrame() {
             handler.removeCallbacks(drawRunnable)
+            val frame = surfaceHolder.surfaceFrame
+            if (frame.width() > 0 && frame.height() > 0) {
+                w = frame.width()
+                h = frame.height()
+            }
             if (w == 0 || h == 0) return
             val holder = surfaceHolder
             var canvas: Canvas? = null
@@ -260,7 +278,11 @@ class TabWallpaperService : WallpaperService() {
                 // 用 GPU 画，换图淡入淡出才顺
                 canvas = try { holder.lockHardwareCanvas() } catch (e: Exception) { null }
                     ?: holder.lockCanvas()
-                if (canvas != null) render(canvas)
+                if (canvas != null) {
+                    w = canvas.width
+                    h = canvas.height
+                    render(canvas)
+                }
             } catch (_: Exception) {
             } finally {
                 if (canvas != null) {
@@ -296,8 +318,9 @@ class TabWallpaperService : WallpaperService() {
 
         private fun drawDebug(canvas: Canvas) {
             debugPaint.textSize = min(w, h) / 40f
+            val dm = ctx.resources.displayMetrics
             val lines = listOf(
-                "画面 ${w}x$h",
+                "画面 ${w}x$h   屏幕 ${dm.widthPixels}x${dm.heightPixels}",
                 "桌面位置事件: $offsetEvents  位置=${"%.2f".format(launcherOffset)}  桌面会滑=${launcherScrolls}",
                 "触摸事件: $touchEvents  点击指令: $tapCommands",
                 "手指滑动位置=${"%.2f".format(swipeOffset)}"
