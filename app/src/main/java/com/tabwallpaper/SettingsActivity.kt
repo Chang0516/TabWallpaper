@@ -12,6 +12,7 @@ import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.RadioButton
@@ -56,8 +57,37 @@ class SettingsActivity : Activity() {
         }
         root.addView(group)
 
+        root.addView(label("横屏时怎么显示", bold = true))
+        val landAuto = RadioButton(this).apply { id = View.generateViewId(); text = "自动（比例接近就填满，差很多才完整显示）" }
+        val landFill = RadioButton(this).apply { id = View.generateViewId(); text = "永远填满屏幕（可能裁掉一点边）" }
+        val landFit = RadioButton(this).apply { id = View.generateViewId(); text = "永远显示完整照片（空位用模糊照片补）" }
+        val landGroup = RadioGroup(this).apply {
+            addView(landAuto); addView(landFill); addView(landFit)
+        }
+        when (Prefs.landMode(this)) {
+            Prefs.LAND_FILL -> landFill.isChecked = true
+            Prefs.LAND_FIT -> landFit.isChecked = true
+            else -> landAuto.isChecked = true
+        }
+        landGroup.setOnCheckedChangeListener { _, checkedId ->
+            Prefs.setLandMode(
+                this, when (checkedId) {
+                    landFill.id -> Prefs.LAND_FILL
+                    landFit.id -> Prefs.LAND_FIT
+                    else -> Prefs.LAND_AUTO
+                }
+            )
+        }
+        root.addView(landGroup)
+
         root.addView(button("设为桌面壁纸") { applyWallpaper() })
-        root.addView(label("打横时永远显示完整照片。在桌面空白处双击可以换下一张。"))
+        root.addView(label("在桌面空白处双击可以换下一张。"))
+
+        root.addView(CheckBox(this).apply {
+            text = "在壁纸上显示调试信息（滑动没反应时打开，截图给 Claude 看）"
+            isChecked = Prefs.debug(this@SettingsActivity)
+            setOnCheckedChangeListener { _, on -> Prefs.setDebug(this@SettingsActivity, on) }
+        })
 
         root.addView(label("我的照片", bold = true))
         listBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }

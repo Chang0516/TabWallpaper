@@ -81,4 +81,15 @@ object Prefs {
 
     fun mode(c: Context): String = sp(c).getString(KEY_MODE, MODE_CROP) ?: MODE_CROP
     fun setMode(c: Context, m: String) = sp(c).edit().putString(KEY_MODE, m).apply()
+
+    const val KEY_LAND = "landscape_mode"
+    const val LAND_AUTO = "auto"
+    const val LAND_FILL = "fill"
+    const val LAND_FIT = "fit"
+    fun landMode(c: Context): String = sp(c).getString(KEY_LAND, LAND_AUTO) ?: LAND_AUTO
+    fun setLandMode(c: Context, m: String) = sp(c).edit().putString(KEY_LAND, m).apply()
+
+    const val KEY_DEBUG = "debug"
+    fun debug(c: Context): Boolean = sp(c).getBoolean(KEY_DEBUG, false)
+    fun setDebug(c: Context, on: Boolean) = sp(c).edit().putBoolean(KEY_DEBUG, on).apply()
 }
